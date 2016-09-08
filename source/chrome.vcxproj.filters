@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="platform\win32\CEApplication-win32.cpp" />
+    <ClCompile Include="base\Event\CEEvent.cpp" />
+    <ClCompile Include="base\event\CEEventListener.cpp" />
+    <ClCompile Include="base\event\CEEventDispatcher.cpp" />
+    <ClCompile Include="platform\test\CEApplication-test.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Utility">
+      <UniqueIdentifier>{32db3200-40ab-4e24-b8cd-e95d01832dcd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="platform\CEApplication.h" />
+    <ClInclude Include="platform\CEPlatformConfig.h" />
+    <ClInclude Include="platform\win32\CEApplication-win32.h" />
+    <ClInclude Include="platform\CEPlatformMacro.h" />
+    <ClInclude Include="base\Event\CEEvent.h" />
+    <ClInclude Include="base\Event\CEEventCommon.h" />
+    <ClInclude Include="base\Event\CEEventListener.h" />
+    <ClInclude Include="base\event\CEEventDispatcher.h" />
+    <ClInclude Include="platform\test\CEApplication-test.h" />
+  </ItemGroup>
+</Project>
