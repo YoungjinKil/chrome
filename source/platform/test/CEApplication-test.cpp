@@ -3,6 +3,7 @@
 NS_CE_BEGIN
 
 Application* Application::s_pApplication = nullptr;
+const UINT Application::BYTES_PER_PIXEL = 4;
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -10,9 +11,6 @@ Application* Application::s_pApplication = nullptr;
 //////////////////////////////////////////////////////////////////////////
 
 Application::Application()
-	: _hInstance(0), _hdc(0), _hbm(0), _hwnd(0),
-	_pBMMemory(0),
-	_width(0), _height(0), _pitch(0), _quit(false)
 {
 }
 
@@ -26,28 +24,22 @@ Application::~Application()
 // Public member function
 //////////////////////////////////////////////////////////////////////////
 
-void Application::QuitApp()
-{	
-	_quit = true;
-}
-
-
 void Application::Init()
 {
 	// Is it enough to get just once?
-	_hInstance = GetModuleHandle(nullptr);
+	_appData.hInstance = GetModuleHandle(nullptr);
 
 	WNDCLASSEX cWnd = {};
 	cWnd.cbSize = sizeof(WNDCLASSEX);
 	cWnd.style = CS_HREDRAW | CS_VREDRAW;
 	cWnd.lpfnWndProc = WndProcInitialize;
-	cWnd.hInstance = _hInstance;
+	cWnd.hInstance = _appData.hInstance;
 	cWnd.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	cWnd.lpszClassName = "ChromeEngineClass";
 
 	if (RegisterClassEx(&cWnd))
 	{
-		_hwnd = CreateWindowEx(0,
+		_appData.hwnd = CreateWindowEx(0,
 			cWnd.lpszClassName,
 			"Unnammed",
 			WS_OVERLAPPEDWINDOW | WS_VISIBLE,
@@ -56,36 +48,38 @@ void Application::Init()
 			0, 0, cWnd.hInstance,
 			this);// Or NULL ???
 
-		CE_ASSERT(_hwnd);
+		CE_ASSERT(_appData.hwnd);
 
-		SetWindowLongPtr(_hwnd, GWL_USERDATA, (LONG_PTR)this);
-		SetWindowLongPtr(_hwnd, GWL_WNDPROC, (LONG_PTR)&WndProcInitialize);
+		SetWindowLongPtr(_appData.hwnd, GWL_USERDATA, (LONG_PTR)this);
+		SetWindowLongPtr(_appData.hwnd, GWL_WNDPROC, (LONG_PTR)&WndProcInitialize);
 
-		GetWindowRect(GetDesktopWindow(), &_wndRect);
-		_width = _wndRect.right - _wndRect.left;
-		_height = _wndRect.bottom - _wndRect.top;
+		GetWindowRect(GetDesktopWindow(), &_appData.wndRect);
+		_appData.width = _appData.wndRect.right - _appData.wndRect.left;
+		_appData.height = _appData.wndRect.bottom - _appData.wndRect.top;
 
 
-		ShowWindow(_hwnd, TRUE);
-		UpdateWindow(_hwnd);
+		ShowWindow(_appData.hwnd, TRUE);
+		UpdateWindow(_appData.hwnd);
 	}
 }
 void Application::Update()
 {
 	MSG msg = {};
 
-	while (!_quit)
+	TestSize();
+
+	while (!_appData.quit)
 	{
-		while (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE) > 0)
+		while (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
 		{
 			if (msg.message == WM_QUIT)
-				_quit = true;
+				_appData.quit = true;
 
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
 
-		InvalidateRect(_hwnd, &_wndRect, FALSE);
+		InvalidateRect(_appData.hwnd, &_appData.wndRect, FALSE);
 	}
 }
 void Application::Shutdown()
@@ -102,21 +96,36 @@ LRESULT CALLBACK Application::WndProcUpdate(HWND hwnd, UINT msg, WPARAM wParam, 
 	{
 		TestPaint();
 	}break;
+	case WM_KEYDOWN:
+	case WM_KEYUP:
+	{
+
+	}break;
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_RBUTTONDOWN:
+	case WM_RBUTTONUP:
+	case WM_MBUTTONDOWN:
+	case WM_MBUTTONUP:
+	case WM_MOUSEMOVE:
+	{
+
+	}break;
 	case WM_ERASEBKGND:
 	{
 		return 1;
 	}break;
 	case WM_SIZE:
 	{
-		TestSize(lParam);
+		TestSize();
 	}break;
 	case WM_DESTROY:
 	{
-		QuitApp();
+		_appData.quit = true;
 	}break;
 	case WM_CLOSE:
 	{
-		QuitApp();
+		_appData.quit = true;
 	}break;
 	default:
 	{
@@ -135,56 +144,45 @@ void Application::TestPaint()
 	PAINTSTRUCT paint;
 	HDC hdc;
 
-	hdc = BeginPaint(_hwnd, &paint);
+	hdc = BeginPaint(_appData.hwnd, &paint);
 
-	if (!_hbm)
-	{
-		_hdc = CreateCompatibleDC(hdc);
-		_hbm = CreateCompatibleBitmap(hdc, _width, _height);
-	}
+	GetClientRect(_appData.hwnd, &_appData.wndRect);
+
 
 	// Fill the double buffer with a color use
-	FillRect(hdc, &_wndRect, (HBRUSH)COLOR_MENU);
+	//FillRect(hdc, &_appData.wndRect, (HBRUSH)COLOR_MENU);
 
 	// Draw hdc
 	// Update(_hdc);
 
 	// Transfer the offscreen DC to the screen
-	BitBlt(hdc, 0, 0, _width, _height, _hdc, 0, 0, SRCCOPY);
-	/*StretchDIBits(_hdc,
-		0, 0, _width, _height,
+	StretchDIBits(hdc,
+		0, 0, _appData.width, _appData.height,
+		0, 0, _appData.wndRect.right - _appData.wndRect.left, 
+		_appData.wndRect.bottom - _appData.wndRect.top,
+		_appData.pBMMemory, &_appData.bmInfo, DIB_RGB_COLORS, SRCCOPY);
 
-		)*/
-
-		EndPaint(_hwnd, &paint);
+	EndPaint(_appData.hwnd, &paint);
 }
-void Application::TestSize(const UINT& lParam)
+void Application::TestSize()
 {
-	_wndRect.right = LOWORD(lParam);
-	_wndRect.bottom = HIWORD(lParam);
+	GetClientRect(_appData.hwnd, &_appData.wndRect);
 
-	//GetWindowRect(GetDesktopWindow(), &_wndRect);
-	_width = _wndRect.right - _wndRect.left;
-	_height = _wndRect.bottom - _wndRect.top;
+	if (_appData.pBMMemory)
+		VirtualFree(_appData.pBMMemory, 0, MEM_RELEASE);
+	
+	_appData.width = _appData.wndRect.right - _appData.wndRect.left;
+	_appData.height = _appData.wndRect.bottom - _appData.wndRect.top;
 
-	if (_hbm)
-	{
-		DeleteObject(_hbm);
-		_hbm = NULL;
-	}
-	if (_hdc)
-	{
-		DeleteDC(_hdc);
-		_hdc = NULL;
-	}
+	_appData.bmInfo.bmiHeader.biSize = sizeof(_appData.bmInfo.bmiHeader);
+	_appData.bmInfo.bmiHeader.biWidth = _appData.width;
+	_appData.bmInfo.bmiHeader.biHeight = _appData.height;
+	_appData.bmInfo.bmiHeader.biPlanes = 1;
+	_appData.bmInfo.bmiHeader.biBitCount = 32;
+	_appData.bmInfo.bmiHeader.biCompression = BI_RGB;
 
-	_bmInfo.bmiHeader.biSize = sizeof(_bmInfo.bmiHeader);
-	_bmInfo.bmiHeader.biWidth = _width;
-	_bmInfo.bmiHeader.biHeight = _height;
-	_bmInfo.bmiHeader.biPlanes = 1;
-	_bmInfo.bmiHeader.biBitCount = 32;
-	_bmInfo.bmiHeader.biCompression = BI_RGB;
-
+	int bmMemSize = _appData.width*_appData.height*BYTES_PER_PIXEL;
+	_appData.pBMMemory = VirtualAlloc(0, bmMemSize, MEM_COMMIT, PAGE_READWRITE);
 }
 
 //////////////////////////////////////////////////////////////////////////

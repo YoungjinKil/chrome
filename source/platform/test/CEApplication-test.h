@@ -12,6 +12,26 @@
 NS_CE_BEGIN
 
 class Application{
+
+	struct AppData
+	{
+		AppData() : hInstance(0), hwnd(0), pBMMemory(0),
+		width(0), height(0), pitch(0), quit(0){}
+
+		HINSTANCE hInstance;
+		HWND hwnd;
+
+		BITMAPINFO bmInfo;
+		void * pBMMemory;
+
+		RECT wndRect;
+		UINT width;
+		UINT height;
+		UINT pitch;
+
+		bool quit;
+	};
+
 public:
 	virtual ~Application();
 	
@@ -21,8 +41,6 @@ public:
 	void Update();
 	void Shutdown();
 
-	void QuitApp();
-
 protected:
 	Application();
 	void operator=(const Application&);
@@ -31,26 +49,13 @@ protected:
 	LRESULT CALLBACK WndProcUpdate(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	static Application* s_pApplication;
+	static const UINT BYTES_PER_PIXEL;
 
-	HINSTANCE _hInstance;
-	HWND _hwnd;
-
-	HDC _hdc;
-	HBITMAP _hbm;
-	BITMAPINFO _bmInfo;
-	void * _pBMMemory;
-
-	RECT _wndRect;
-	UINT _width;
-	UINT _height;
-	UINT _pitch;
-
-	bool _quit;
-
+	AppData _appData;
 
 	// Fucntions For Test
 	void TestPaint();
-	void TestSize(const UINT& lParam);
+	void TestSize();
 
 };
 
