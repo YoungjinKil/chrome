@@ -1,0 +1,24 @@
+#OS junk files
+[Th]humbs.db
+
+##############################################
+## Visual Studio files
+##############################################
+
+## User-specific files
+
+*.suo
+*.user
+
+## Build results
+
+Temp/
+*_[Dd]ebug/
+*_[Rr]elease/
+
+
+
+*.[Oo]bj
+*.ilk
+*.suo
+*_.VC.db

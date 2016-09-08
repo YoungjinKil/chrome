@@ -21,22 +21,24 @@ public:
 	void Update();
 	void Shutdown();
 
-	// Fucntions For Test
-	void TestPaint();
-	void TestSize(const UINT& lParam);
+	void QuitApp();
+
 protected:
 	Application();
 	void operator=(const Application&);
 
-	static LRESULT CALLBACK WndProcStatic(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-	
+	static LRESULT CALLBACK WndProcInitialize(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	LRESULT CALLBACK WndProcUpdate(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 	static Application* s_pApplication;
 
 	HINSTANCE _hInstance;
+	HWND _hwnd;
+
 	HDC _hdc;
 	HBITMAP _hbm;
-	HWND _hwnd;
-	HANDLE _hOld;
+	BITMAPINFO _bmInfo;
+	void * _pBMMemory;
 
 	RECT _wndRect;
 	UINT _width;
@@ -44,6 +46,11 @@ protected:
 	UINT _pitch;
 
 	bool _quit;
+
+
+	// Fucntions For Test
+	void TestPaint();
+	void TestSize(const UINT& lParam);
 
 };
 

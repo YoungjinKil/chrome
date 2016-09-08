@@ -4,11 +4,16 @@ NS_CE_BEGIN
 
 Application* Application::s_pApplication = nullptr;
 
+
+//////////////////////////////////////////////////////////////////////////
+// Ctor & Dtor
+//////////////////////////////////////////////////////////////////////////
+
 Application::Application()
 	: _hInstance(0), _hdc(0), _hbm(0), _hwnd(0),
+	_pBMMemory(0),
 	_width(0), _height(0), _pitch(0), _quit(false)
 {
-	Init();
 }
 
 Application::~Application()
@@ -17,14 +22,13 @@ Application::~Application()
 	s_pApplication = nullptr;
 }
 
-Application* Application::GetInstance()
-{
-	if (!s_pApplication)
-		s_pApplication = new Application;
+//////////////////////////////////////////////////////////////////////////
+// Public member function
+//////////////////////////////////////////////////////////////////////////
 
-	CE_ASSERT(s_pApplication);
-
-	return s_pApplication;
+void Application::QuitApp()
+{	
+	_quit = true;
 }
 
 
@@ -36,7 +40,7 @@ void Application::Init()
 	WNDCLASSEX cWnd = {};
 	cWnd.cbSize = sizeof(WNDCLASSEX);
 	cWnd.style = CS_HREDRAW | CS_VREDRAW;
-	cWnd.lpfnWndProc = WndProcStatic;
+	cWnd.lpfnWndProc = WndProcInitialize;
 	cWnd.hInstance = _hInstance;
 	cWnd.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	cWnd.lpszClassName = "ChromeEngineClass";
@@ -49,14 +53,18 @@ void Application::Init()
 			WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			CW_USEDEFAULT, CW_USEDEFAULT,
-			0, 0, cWnd.hInstance, 
+			0, 0, cWnd.hInstance,
 			this);// Or NULL ???
 
 		CE_ASSERT(_hwnd);
 
+		SetWindowLongPtr(_hwnd, GWL_USERDATA, (LONG_PTR)this);
+		SetWindowLongPtr(_hwnd, GWL_WNDPROC, (LONG_PTR)&WndProcInitialize);
+
 		GetWindowRect(GetDesktopWindow(), &_wndRect);
 		_width = _wndRect.right - _wndRect.left;
 		_height = _wndRect.bottom - _wndRect.top;
+
 
 		ShowWindow(_hwnd, TRUE);
 		UpdateWindow(_hwnd);
@@ -66,26 +74,33 @@ void Application::Update()
 {
 	MSG msg = {};
 
-	while (GetMessage(&msg, NULL, NULL, NULL))
+	while (!_quit)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		while (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE) > 0)
+		{
+			if (msg.message == WM_QUIT)
+				_quit = true;
+
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 
 		InvalidateRect(_hwnd, &_wndRect, FALSE);
 	}
 }
 void Application::Shutdown()
 {
-	
-}
 
-LRESULT CALLBACK Application::WndProcStatic(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+}
+LRESULT CALLBACK Application::WndProcUpdate(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	LRESULT result = 0;
+
 	switch (msg)
 	{
 	case WM_PAINT:
 	{
-		Application::GetInstance()->TestPaint();
+		TestPaint();
 	}break;
 	case WM_ERASEBKGND:
 	{
@@ -93,20 +108,28 @@ LRESULT CALLBACK Application::WndProcStatic(HWND hwnd, UINT msg, WPARAM wParam, 
 	}break;
 	case WM_SIZE:
 	{
-		Application::GetInstance()->TestSize(lParam);
+		TestSize(lParam);
 	}break;
 	case WM_DESTROY:
 	{
-		PostQuitMessage(0);
+		QuitApp();
+	}break;
+	case WM_CLOSE:
+	{
+		QuitApp();
 	}break;
 	default:
 	{
-		DefWindowProc(hwnd, msg, wParam, lParam);
+		result = DefWindowProc(hwnd, msg, wParam, lParam);
 	}break;
 	}
+
+	return result;
 }
 
-
+//////////////////////////////////////////////////////////////////////////
+// Private member function
+//////////////////////////////////////////////////////////////////////////
 void Application::TestPaint()
 {
 	PAINTSTRUCT paint;
@@ -118,22 +141,22 @@ void Application::TestPaint()
 	{
 		_hdc = CreateCompatibleDC(hdc);
 		_hbm = CreateCompatibleBitmap(hdc, _width, _height);
-		_hOld = SelectObject(_hdc, _hbm);
 	}
 
 	// Fill the double buffer with a color use
-	FillRect(_hdc, &_wndRect, (HBRUSH)COLOR_MENU);
+	FillRect(hdc, &_wndRect, (HBRUSH)COLOR_MENU);
 
 	// Draw hdc
 	// Update(_hdc);
 
 	// Transfer the offscreen DC to the screen
 	BitBlt(hdc, 0, 0, _width, _height, _hdc, 0, 0, SRCCOPY);
-	/*StretchDIBits(hdc,
+	/*StretchDIBits(_hdc,
 		0, 0, _width, _height,
+
 		)*/
 
-	EndPaint(_hwnd, &paint);
+		EndPaint(_hwnd, &paint);
 }
 void Application::TestSize(const UINT& lParam)
 {
@@ -144,7 +167,7 @@ void Application::TestSize(const UINT& lParam)
 	_width = _wndRect.right - _wndRect.left;
 	_height = _wndRect.bottom - _wndRect.top;
 
-	if(_hbm)
+	if (_hbm)
 	{
 		DeleteObject(_hbm);
 		_hbm = NULL;
@@ -154,6 +177,46 @@ void Application::TestSize(const UINT& lParam)
 		DeleteDC(_hdc);
 		_hdc = NULL;
 	}
+
+	_bmInfo.bmiHeader.biSize = sizeof(_bmInfo.bmiHeader);
+	_bmInfo.bmiHeader.biWidth = _width;
+	_bmInfo.bmiHeader.biHeight = _height;
+	_bmInfo.bmiHeader.biPlanes = 1;
+	_bmInfo.bmiHeader.biBitCount = 32;
+	_bmInfo.bmiHeader.biCompression = BI_RGB;
+
 }
+
+//////////////////////////////////////////////////////////////////////////
+// Static member function
+//////////////////////////////////////////////////////////////////////////
+
+Application* Application::GetInstance()
+{
+	if (!s_pApplication)
+	{
+		s_pApplication = new Application;
+		s_pApplication->Init();
+	}
+
+	CE_ASSERT(s_pApplication);
+
+	return s_pApplication;
+}
+
+LRESULT CALLBACK Application::WndProcInitialize(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	Application* pApp = (Application*)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
+	if (pApp)
+		pApp->WndProcUpdate(hwnd, msg, wParam, lParam);
+	else
+		return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+// Local member function
+//////////////////////////////////////////////////////////////////////////
 
 NS_CE_END

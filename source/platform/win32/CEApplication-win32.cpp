@@ -190,12 +190,12 @@ Application* Application::GetInstance()
 
 LRESULT CALLBACK Application::WndCallbackStatic(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	//Application* pApp = (Application*)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+	Application* pApp = (Application*)(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
-	//if (pApp)
-	//	pApp->WndCallback(hwnd, msg, wParam, lParam);
+	if (pApp)
+		pApp->WndCallback(hwnd, msg, wParam, lParam);
 
-	//else
+	else
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
