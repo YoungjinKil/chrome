@@ -37,16 +37,17 @@ public:
 	
 	static Application* GetInstance();
 
-	void Init();
-	void Update();
-	void Shutdown();
+	void Run();
 
 protected:
 	Application();
 	void operator=(const Application&);
 
+	void Initialize();
+
 	static LRESULT CALLBACK WndProcInitialize(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK WndProcUpdate(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 
 	static Application* s_pApplication;
 	static const UINT BYTES_PER_PIXEL;
